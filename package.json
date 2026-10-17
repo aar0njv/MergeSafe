@@ -1,0 +1,21 @@
+{
+  "name": "migrate-check",
+  "version": "1.0.0",
+  "description": "GitHub Action to test SQL migrations against an ephermeral PostgreSQL DB",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@actions/core": "^3.0.1",
+    "@actions/github": "^9.1.1",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "dotenv": "^18.0.8"
+  }
+}
