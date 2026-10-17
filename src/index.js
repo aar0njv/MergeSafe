@@ -4,7 +4,7 @@ import pg from 'pg';
 const { Pool } = pg;
 
 import { runMigrations } from './runner.js';
-import { snapshotTables, collectDiagnostics, detectRewrites } from './diagnostics.js';
+import { snapshotTables, detectRewrites } from './diagnostics.js';
 
 
 try {
@@ -60,84 +60,102 @@ async function main() {
         console.log('Running migrations...\n');
         const migrationResults = await runMigrations(pool, migrationsDir);
 
-        console.log('Collecting diagnostics from system catalogs...');
-        const diagnostics = await collectDiagnostics(pool);
         const afterSnapshot = await snapshotTables(pool);
         const rewrites = detectRewrites(beforeSnapshot, afterSnapshot);
 
         console.log('\n========================================');
         console.log('         MIGRATION RESULTS              ');
         console.log('========================================');
+
         for (const r of migrationResults) {
-            const status = r.success ? 'SUCCESS' : 'FAILED';
             console.log(`${r.filename}`);
-            console.log(`     Status:   ${status}`);
+            console.log(`     Status:   ${r.success ? 'SUCCESS' : 'FAILED'}`);
             console.log(`     Duration: ${r.durationMs}ms`);
-            if (r.error) {
-                console.log(`     Error:    ${r.error}`);
-            }
+
+            if (r.error) console.log(`     Error:    ${r.error}`);
+
             console.log('');
         }
-
 
         console.log('========================================');
         console.log('           LOCK ANALYSIS                ');
         console.log('========================================');
-        if (diagnostics.locks.length === 0) {
-            console.log('No significant locks detected.\n');
-        } else {
-            for (const lock of diagnostics.locks) {
-                const danger = lock.mode === 'AccessExclusiveLock' ? 'CRITICAL' : 'INFO';
+
+        let anyLocksFound = false;
+
+        for (const r of migrationResults) {
+
+            const reportedLocks = new Set();
+            const peakDurations = {};
+
+            for (const snapshot of r.diagnostics) {
+                for (const lock of snapshot.locks) {
+                    const key = `${lock.table_name}-${lock.mode}`;
+                    if (!peakDurations[key] || lock.duration_ms > peakDurations[key].duration_ms) {
+                        peakDurations[key] = { ...lock, capturedAt: snapshot.capturedAt };
+                    }
+                }
+            }
+
+            for (const [key, lock] of Object.entries(peakDurations)) {
+                anyLocksFound = true;
+                const isCritical = lock.mode === 'AccessExclusiveLock' || lock.mode === 'ShareLock';
+                const danger = isCritical ? 'CRITICAL' : 'INFO';
                 console.log(`${danger}`);
-                console.log(`   Table:    ${lock.table_name}`);
-                console.log(`   Mode:     ${lock.mode}`);
-                console.log(`   Granted:  ${lock.granted}`);
-                console.log(`   Duration: ${lock.duration_ms}ms`);
-                console.log(`   Query:    ${lock.query}`);
+                console.log(`   Migration:    ${r.filename}`);
+                console.log(`   Table:        ${lock.table_name}`);
+                console.log(`   Mode:         ${lock.mode}`);
+                console.log(`   Peak Duration: ${lock.duration_ms}ms`);
+                console.log(`   Query:        ${lock.query}`);
                 console.log('');
             }
         }
 
+        if (!anyLocksFound) console.log('No significant locks detected.\n');
 
         console.log('========================================');
         console.log('          INDEX BUILD ANALYSIS          ');
         console.log('========================================');
-        if (diagnostics.indexBuilds.length === 0) {
-            console.log('No in-progress index builds captured.');
-            console.log('   (Fast builds may have completed before snapshot.)');
-            console.log('   Check LOCK ANALYSIS above for AccessExclusiveLock entries.\n');
-        } else {
-            for (const idx of diagnostics.indexBuilds) {
-                const danger = idx.command === 'CREATE INDEX' ? 'BLOCKING' : 'CONCURRENT';
-                console.log(`${danger}`);
-                console.log(`   Table:   ${idx.table_name}`);
-                console.log(`   Index:   ${idx.index_name}`);
-                console.log(`   Command: ${idx.command}`);
-                console.log(`   Phase:   ${idx.phase}`);
-                console.log(`   Progress: ${idx.blocks_done}/${idx.blocks_total} blocks`);
-                console.log('');
+
+        let anyIndexBuilds = false;
+        for (const r of migrationResults) {
+            for (const snapshot of r.diagnostics) {
+                for (const idx of snapshot.indexBuilds) {
+                    anyIndexBuilds = true;
+                    const danger = idx.command === 'CREATE INDEX' ? 'BLOCKING' : 'CONCURRENT';
+                    console.log(`${danger}  [captured at +${snapshot.capturedAt}ms]`);
+                    console.log(`   Migration: ${r.filename}`);
+                    console.log(`   Table:     ${idx.table_name}`);
+                    console.log(`   Index:     ${idx.index_name}`);
+                    console.log(`   Command:   ${idx.command}`);
+                    console.log(`   Phase:     ${idx.phase}`);
+                    console.log('');
+                }
             }
         }
 
+        if (!anyIndexBuilds) {
+            console.log('No in-progress index builds captured.');
+            console.log('Check LOCK ANALYSIS for AccessExclusiveLock entries.\n');
+        }
 
         console.log('========================================');
         console.log('         TABLE REWRITE DETECTION        ');
         console.log('========================================');
+
         if (rewrites.length === 0) {
             console.log('No table rewrites detected.\n');
         } else {
             for (const rw of rewrites) {
                 console.log(`REWRITE DETECTED`);
-                console.log(`   Table:           ${rw.table_name}`);
-                console.log(`   Live rows:       ${rw.live_rows}`);
+                console.log(`   Table:            ${rw.table_name}`);
+                console.log(`   Live rows:        ${rw.live_rows}`);
                 console.log(`   File node BEFORE: ${rw.before_file_node}`);
                 console.log(`   File node AFTER:  ${rw.after_file_node}`);
                 console.log('');
             }
         }
 
-
-        // Exit with code 1 if any migration failed
         const anyFailed = migrationResults.some(r => !r.success);
         if (anyFailed) {
             console.error('One or more migrations failed. Exiting with error.');
@@ -147,9 +165,7 @@ async function main() {
         console.log('========================================');
         console.log('   MigrateCheck completed successfully');
         console.log('========================================');
-
     } finally {
-        // Always close the pool — whether we succeeded or failed
         await pool.end();
     }
 }

@@ -66,8 +66,15 @@ export async function collectDiagnostics(pool) {
         pool.query(INDEX_BUILD_QUERY),
     ]);
 
+    const seen = new Set();
+    const uniqueLocks = lockResult.rows.filter(lock => {
+        const key = `${lock.pid}-${lock.table_name}-${lock.mode}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
     return {
-        locks: lockResult.rows,
+        locks: uniqueLocks,
         indexBuilds: indexResult.rows,
     };
 }
