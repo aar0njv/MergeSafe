@@ -1,0 +1,76 @@
+
+name: MergeSafe - Migration Safety Check
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'migrations/**'
+  
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  migration-check:
+    name: Run MergeSafe Migration Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Start PostgreSQL 
+        run: docker compose up -d
+        env:
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }} 
+
+      - name: Wait for PostgreSQL to be healthy
+        run: |
+          echo "Waiting for PostgreSQL to be healthy..."
+          for i in $(seq 1 30); do
+            STATUS=$(docker inspect --format='{{.State.Health.Status}}' migrate-check-postgres 2>/dev/null)
+            if [ "$STATUS" = "healthy" ]; then
+              echo "PostgreSQL is healthy after $i attempt(s)."
+              exit 0
+            fi
+            echo "Attempt $i/30 — current status: $STATUS. Retrying in 3s..."
+            sleep 3
+          done
+          echo "PostgreSQL did not become healthy within 90 seconds."
+          echo "Dumping container logs for debugging:"
+          docker compose logs postgres
+          exit 1
+
+      - name: Run MergeSafe
+        id: mergesafe
+        uses: ./
+        with:
+          migration-dir: 'migrations'
+          db-host: 'localhost'
+          db-port: '5432'
+          db-name: ${{ secrets.POSTGRES_DB }}
+          db-user: ${{ secrets.POSTGRES_USER }}
+          db-password: ${{ secrets.POSTGRES_PASSWORD }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          fail-on-warnings: 'false'
+
+      - name: Delete PostgreSQL container
+        if: always()
+        run: docker compose down -v
+        env:
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}

@@ -1,0 +1,59 @@
+
+name: 'MergeSafe'
+description: 'Automatically test migrations against PostgreSQL dband post metrics as a PR comment'
+author: 'aar0njv'
+
+branding:
+  icon: 'database'
+  color: 'blue'
+
+inputs:
+  migration-dir:
+    description: 'Path to .sql migration files'
+    required: true
+
+  db-host:
+    description: 'PostgreSQL host'
+    required: false
+    default: 'localhost'
+  
+  db-port:
+    description: 'PostgreSQL port'
+    required: false
+    default: 5432
+
+  db-name:
+    description: 'Database name'
+    required: true
+
+  db-username:
+    description: 'PostgreSQL username'
+    required: true
+
+  db-password:
+    description: 'PostgreSQL password'
+    required: true
+
+  github-token:
+    description: 'GitHub PAT'
+    required: true
+  
+  fail-on-warnings:
+    description: 'Exit with code 1 if CRITICAL locks or rewrites'
+    required: false
+    default: 'false'
+  
+outputs:
+  migration-status:
+    description: 'Overall result - "success" or "failure"'
+
+  warnings-found:
+    description: 'Whether CRITICAL locks or rewrites were detected - "true" or "false"'
+
+  comment-url:
+    description: 'URL of the PR comment posted by action'
+  
+runs:
+  using: 'node20'
+  main: 'src/index.js'
+  
