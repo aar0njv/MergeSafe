@@ -29,7 +29,7 @@ async function main() {
         : path.resolve('./migrations');
 
     console.log('========================================');
-    console.log('        MigrateCheck Starting           ');
+    console.log('        MergeSafe Starting           ');
     console.log('========================================');
     console.log(`Host:              ${dbConfig.host}:${dbConfig.port}`);
     console.log(`Database:          ${dbConfig.database}`);
@@ -163,7 +163,7 @@ async function main() {
         }
 
         console.log('========================================');
-        console.log('   MigrateCheck completed successfully');
+        console.log('   MergeSafe completed successfully');
         console.log('========================================');
     } finally {
         await pool.end();

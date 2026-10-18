@@ -1,5 +1,5 @@
 {
-  "name": "migrate-check",
+  "name": "mergesafe",
   "version": "1.0.0",
   "description": "GitHub Action to test SQL migrations against an ephermeral PostgreSQL DB",
   "main": "src/index.js",

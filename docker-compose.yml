@@ -4,7 +4,7 @@ services:
 
   postgres:
     image: postgres:15-alpine
-    container_name: migrate-check-postgres
+    container_name: mergesafe-postgres
     
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
