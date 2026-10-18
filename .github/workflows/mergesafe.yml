@@ -59,10 +59,10 @@ jobs:
         uses: ./
         with:
           migration-dir: 'migrations'
-          db-host: 'localhost'
+          db-host: '127.0.0.1'
           db-port: '5432'
           db-name: ${{ secrets.POSTGRES_DB }}
-          db-user: ${{ secrets.POSTGRES_USER }}
+          db-username: ${{ secrets.POSTGRES_USER }}
           db-password: ${{ secrets.POSTGRES_PASSWORD }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           fail-on-warnings: 'false'

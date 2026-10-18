@@ -16,7 +16,7 @@ try {
 
 async function main() {
     const dbConfig = {
-        host: core.getInput('db-host') || process.env.DB_HOST || 'localhost',
+        host: core.getInput('db-host') || process.env.DB_HOST || '127.0.0.1',
         port: parseInt(core.getInput('db-port') || process.env.DB_PORT || '5432'),
         database: core.getInput('db-name') || process.env.POSTGRES_DB,
         user: core.getInput('db-username') || process.env.POSTGRES_USER,
