@@ -23,7 +23,7 @@ async function main() {
         user: core.getInput('db-username') || process.env.POSTGRES_USER,
         password: core.getInput('db-password') || process.env.POSTGRES_PASSWORD,
     };
-    const rawMigrationDir = process.env.MIGRATIONS_DIR || './migrations';
+    const rawMigrationDir = core.getInput('migration-dir') || process.env.MIGRATIONS_DIR || './migrations';
     const migrationsDir = path.resolve(rawMigrationDir);
 
     const pool = new Pool(dbConfig);
