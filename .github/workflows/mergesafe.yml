@@ -41,7 +41,7 @@ jobs:
         run: |
           echo "Waiting for PostgreSQL to be healthy..."
           for i in $(seq 1 30); do
-            STATUS=$(docker inspect --format='{{.State.Health.Status}}' migrate-check-postgres 2>/dev/null)
+            STATUS=$(docker inspect --format='{{.State.Health.Status}}' mergesafe-postgres 2>/dev/null)
             if [ "$STATUS" = "healthy" ]; then
               echo "PostgreSQL is healthy after $i attempt(s)."
               exit 0
