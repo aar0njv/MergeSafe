@@ -15,27 +15,15 @@ try {
 
 
 async function main() {
-
     const dbConfig = {
-        host: process.env.DB_HOST || 'localhost',
-        port: parseInt(process.env.DB_PORT || '5432'),
-        database: process.env.POSTGRES_DB,
-        user: process.env.POSTGRES_USER,
-        password: process.env.POSTGRES_PASSWORD,
+        host: core.getInput('db-host') || process.env.DB_HOST || 'localhost',
+        port: parseInt(core.getInput('db-port') || process.env.DB_PORT || '5432'),
+        database: core.getInput('db-name') || process.env.POSTGRES_DB,
+        user: core.getInput('db-username') || process.env.POSTGRES_USER,
+        password: core.getInput('db-password') || process.env.POSTGRES_PASSWORD,
     };
-
-    const migrationsDir = process.env.MIGRATIONS_DIR
-        ? path.resolve(process.env.MIGRATIONS_DIR)
-        : path.resolve('./migrations');
-
-    console.log('========================================');
-    console.log('        MergeSafe Starting           ');
-    console.log('========================================');
-    console.log(`Host:              ${dbConfig.host}:${dbConfig.port}`);
-    console.log(`Database:          ${dbConfig.database}`);
-    console.log(`Migrations folder: ${migrationsDir}`);
-    console.log('========================================\n');
-
+    const rawMigrationDir = process.env.MIGRATIONS_DIR || './migrations';
+    const migrationsDir = path.resolve(rawMigrationDir);
 
     const pool = new Pool(dbConfig);
 
