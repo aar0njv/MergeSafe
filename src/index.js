@@ -1,4 +1,5 @@
 
+import * as core from '@actions/core';
 import path from 'path';
 import pg from 'pg';
 const { Pool } = pg;
