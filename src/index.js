@@ -1,6 +1,7 @@
 
 import path from 'path';
 import pg from 'pg';
+import * as core from '@actions/core';
 const { Pool } = pg;
 
 import { runMigrations } from './runner.js';
